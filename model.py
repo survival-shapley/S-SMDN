@@ -34,6 +34,9 @@ class SimplexNet(nn.Module):
 
         return probs, logprobs
 
+# To try the another network architexture -- to experiment with what is 
+# reported on paper, comment below and decomment the other PredictiveNet.
+
 class PredictiveNet(nn.Module):
 
     def __init__(
@@ -58,24 +61,81 @@ class PredictiveNet(nn.Module):
 
         self.cluster_emb = nn.Embedding(d_clusters, d_emb)
         self.d_clusters = d_clusters
-
-    def forward(self, phi):
-
+        self.bias = nn.Parameter(torch.randn(1), requires_grad=True)
+        
+    def forward(self, phi, pc_x=None):
+        f_x = phi.sum(-1) + nn.Softplus()(self.bias)
+        
         c = torch.tensor(list(range(self.d_clusters))).long().to(phi.device)
         c = c.repeat_interleave(phi.size(0), 0)
 
-        phi = torch.cat([phi for _ in range(self.d_clusters)], 0)
+        phi_ = torch.cat([phi for _ in range(self.d_clusters)], 0)
         c_emb = self.cluster_emb(c)
 
         loc = self.loc_net(
-            torch.cat([phi, c_emb], -1)
+            torch.cat([phi_, c_emb], -1)
             ).squeeze(-1)
+        
+        loc = torch.stack(
+            [loc for loc in loc.split(phi.shape[0], 0)],
+            -1
+            )
+        e = torch.ones_like(loc)
+        l = torch.zeros_like(loc)
+        l[:,-1] = (f_x - (loc * pc_x)[:,:-1].sum(-1))/ pc_x[:,-1]
+        e[:,-1] = 0.
+        loc = loc * e + (1-e) * l
+        loc = torch.cat(loc.split(1,-1)).squeeze(-1)
+        
         scale = self.scale_net(
-            torch.cat([phi, c_emb], -1)
+            torch.cat([phi_.detach(), c_emb], -1)
             ).squeeze(-1)
         scale = nn.Softplus()(scale)
 
         return loc, scale + 1e-10
+
+# class PredictiveNet(nn.Module):
+
+#     def __init__(
+#             self, d_in, d_out, d_hid, d_emb, d_clusters, n_layers,
+#             activation, dropout, norm
+#             ):
+#         super(PredictiveNet, self).__init__()
+
+#         self.loc_net = nn.Sequential(
+#             *create_feedforward_layers(
+#                 d_in + d_emb, d_hid, d_out, n_layers, activation, dropout, norm
+#                 )
+#             )
+
+#         self.scale_net = nn.Sequential(
+#             nn.Sequential(
+#                 *create_feedforward_layers(
+#                 d_in + d_emb, d_hid, d_out, n_layers, activation, dropout, norm
+#                 )
+#                 )
+#             )
+
+#         self.cluster_emb = nn.Embedding(d_clusters, d_emb)
+#         self.d_clusters = d_clusters
+
+#     def forward(self, phi, pc_x=None):
+
+#         c = torch.tensor(list(range(self.d_clusters))).long().to(phi.device)
+#         c = c.repeat_interleave(phi.size(0), 0)
+
+#         phi = torch.cat([phi for _ in range(self.d_clusters)], 0)
+#         c_emb = self.cluster_emb(c)
+
+#         loc = self.loc_net(
+#             torch.cat([phi, c_emb], -1)
+#             ).squeeze(-1)
+#         scale = self.scale_net(
+#             torch.cat([phi.detach(), c_emb], -1)
+#             ).squeeze(-1)
+#         scale = nn.Softplus()(scale)
+
+#         return loc, scale + 1e-10
 
 class ShapleyNet(nn.Module):
     """
@@ -175,7 +235,7 @@ class Model(nn.Module):
 
         phi = self.shapley_net(x, m)
         pc_x, logpc_x = self.simplex_net(phi)
-        predictive_loc, predictive_scale = self.predictive_net(phi)
+        predictive_loc, predictive_scale = self.predictive_net(phi, pc_x)
         predictions = torch.sum(
             torch.cat(
                 [pl.unsqueeze(-1) for pl in predictive_loc.split(x.size(0),0)],
@@ -233,14 +293,14 @@ class Model(nn.Module):
         pc_x, logpc_x = self.simplex_net(phi)
 
         phi_mean = (predictions - predictions.mean() - phi.sum(-1))
-        phi_mean = phi_mean.mean(0).pow(2)
+        phi_mean = phi_mean.pow(2).mean(0)
 
         logjoint, posterior, \
             logposterior = self.joint_and_posterior(
                 logpc_x, predictive_loc, predictive_scale, y, c
                 )
         # in case, you want to use EM-Algorithm
-        # q_function = torch.sum(posterior * logjoint, -1)
+        q_function = torch.sum(posterior * logjoint, -1)
         # if you want to use EM replace loglikelihood in loss with q_function
         # by de-commenting q_function
         loglikelihood = logjoint.logsumexp(-1)
@@ -267,10 +327,10 @@ class Model(nn.Module):
         delta_blue = posterior_loc1 - phi
         proxy_kld = beta.detach() * (
             delta_blue * delta_red.detach()
-            ) + beta * (delta_blue.pow(2) + delta_red.pow(2)).detach() / 2
+            ) + beta * (delta_blue**2 + delta_red**2).detach() / 2
 
         loss = torch.mean(
-            loglikelihood - proxy_kld
+            q_function - proxy_kld
             , 0)
         loglikelihood = torch.mean(loglikelihood, 0)
         proxy_kld = torch.mean(proxy_kld, 0)
@@ -461,8 +521,8 @@ if __name__ == '__main__':
 
     #Test config
 
-    batch_size = 4
-    d_in = 3
+    batch_size = 5
+    d_in = 2
     d_clusters = 4
     d_hid = 200
     d_emb = 10
