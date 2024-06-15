@@ -139,7 +139,8 @@ class PredictiveNet(nn.Module):
 
 class ShapleyNet(nn.Module):
     """
-    Given a feature, outputs Shapley values.
+    Given a feature, outputs Shapley values. See ketenci et al. 2024 for
+    continuous embedding layer (create_masked_layers) details. 
     """
     def __init__(
             self, d_in, d_clusters, d_hid,
@@ -306,7 +307,7 @@ class Model(nn.Module):
         loglikelihood = logjoint.logsumexp(-1)
 
         posterior_loc1, posterior_loc2, feature_idx \
-            = self.posterior_parameters(x, m)
+            = self.shapley_parameters(x, m)
 
         phi = torch.cat(
             [p.gather(
@@ -374,12 +375,19 @@ class Model(nn.Module):
             m = torch.ones_like(x) == 1
         return m
 
-    def posterior_parameters(
+    def shapley_parameters(
             self,
             x,
             missing_,
             sample_size=1
             ):
+        """
+        Where we compute the shapley parameters 
+        (Shapley values of randomly sampled)
+        features w.r.t. randomly sampled features and coalitions. This is a 
+        computationally efficient approach, and the code can even run on a 
+        HP OMEN personal computer easily -- see Ketenci et al. 2024. for details.
+        """        
         sample_size *= 2
         orig_size = x.size(0)
         feature_idx_init = torch.tensor(

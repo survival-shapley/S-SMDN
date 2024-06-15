@@ -22,13 +22,79 @@ from utils import train_one_epoch, evaluate_model, cache_epoch_results,\
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
+# if __name__ == '__main__':
+#     parser = argparse.ArgumentParser()
+#     """
+#     Dataset and checkpoint arguments.
+#     """
+#     parser.add_argument(
+#         '--dataset', default='support', type=str,
+#         help='dataset'
+#         )
+#     parser.add_argument(
+#         '--cv_folds', default=5, type=int, help='cv_folds'
+#         )
+#     parser.add_argument(
+#         '--save_metric', default='LL_valid'
+#         )
+#     parser.add_argument(
+#         '--patience', default=800, type=int, help='cv_folds'
+#         )
+#     """
+#     Device, optimization and batch size arguments.
+#     """
+#     parser.add_argument(
+#         '--device', default='cuda', type=str, help='device to train the model'
+#         )
+#     parser.add_argument(
+#         '--bs', default=1024, type=int, help='batch size'
+#         )
+#     parser.add_argument(
+#         '--lr', default=1e-3, type=float, help='learning rate'
+#         )
+#     parser.add_argument(
+#         '--wd', default=0, type=float, help='weight decay.'
+#         )
+#     parser.add_argument(
+#         '--epochs', default=4000, type=int, help='training epochs number'
+#         )
+#     """
+#     Model arguments.
+#     """
+#     parser.add_argument(
+#         '--d_emb', default=50, type=int, help='missingness embeddings'
+#         )
+#     parser.add_argument(
+#         '--d_clusters', default=5, type=int, help='cluster size'
+#         )
+#     parser.add_argument(
+#         '--d_hid', default=150, type=int, help='hidden dimensions'
+#         )
+#     parser.add_argument(
+#         '--n_layers', default=3, type=int, help='layers in nns'
+#         )
+#     parser.add_argument(
+#         '--act', default='elu', type=str, help='activation function'
+#         )
+#     parser.add_argument(
+#         '--norm', default='layer', type=str, help='layern or batch norm (or none)'
+#         )
+#     parser.add_argument(
+#         '--dropout', default=0.1, type=float, help='dropout'
+#         )
+#     parser.add_argument(
+#         '--beta', default=1, type=float, help='proxy kld scaling coefficient'
+#         )
+#     args = parser.parse_args()
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     """
     Dataset and checkpoint arguments.
     """
     parser.add_argument(
-        '--dataset', default='support', type=str,
+        '--dataset', default='aki', type=str,
         help='dataset'
         )
     parser.add_argument(
@@ -65,7 +131,7 @@ if __name__ == '__main__':
         '--d_emb', default=50, type=int, help='missingness embeddings'
         )
     parser.add_argument(
-        '--d_clusters', default=5, type=int, help='cluster size'
+        '--d_clusters', default=3, type=int, help='cluster size'
         )
     parser.add_argument(
         '--d_hid', default=150, type=int, help='hidden dimensions'
@@ -77,13 +143,13 @@ if __name__ == '__main__':
         '--act', default='elu', type=str, help='activation function'
         )
     parser.add_argument(
-        '--norm', default='layer', type=str, help='layern or batch norm (or none)'
+        '--norm', default=None, type=str, help='layern or batch norm (or none)'
         )
     parser.add_argument(
-        '--dropout', default=0.1, type=float, help='dropout'
+        '--dropout', default=0, type=float, help='dropout'
         )
     parser.add_argument(
-        '--beta', default=1, type=float, help='proxy kld scaling coefficient'
+        '--beta', default=None, type=float, help='proxy kld scaling coefficient'
         )
     args = parser.parse_args()
 

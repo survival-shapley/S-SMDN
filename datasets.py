@@ -124,19 +124,7 @@ def load_dataset(
         data = pd.read_csv('./data/ckd.csv').sample(sample_size)
         drop = [x for x in data.keys() if 'unnamed' in x.lower()]
         data = data.drop(columns=drop)
-        keep = [
-            'age', 
-            'Calcium [Mass/volume] in Serum or Plasma.numerical',
-            'Chloride [Moles/volume] in Serum or Plasma.numerical',
-            'Creatinine [Mass/volume] in Serum or Plasma.numerical',
-            'C reactive protein [Mass/volume] in Serum or Plasma.numerical',
-            'Potassium [Moles/volume] in Serum or Plasma.numerical',
-            'Protein [Mass/volume] in Urine by Test strip.categorical',
-            'Urate [Mass/volume] in Serum or Plasma.numerical',
-            'time',
-            'event'
-            ]
-        drop = set(data.keys()) - set(keep) 
+
         # data = data[~data['time'].isna()]
 
         # let's not use these "pseudo-categorical variables in our experiments"
@@ -150,7 +138,7 @@ def load_dataset(
                         'beg_date',
                         'event_date',
                         'cohort_end_date'
-                    ] + pseudo_categorical + list(drop)
+                    ] + pseudo_categorical
         )
 
         data = data.sample(frac=1).reset_index(drop=True)
